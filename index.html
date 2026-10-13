@@ -369,6 +369,26 @@ select option{background:var(--bg2);color:var(--text)}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;transition-delay:0s!important}
 }
+
+/* ===== Puente entre sesiones ===== */
+.puente{margin-top:30px;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px}
+.puente .glass{--pc:#7C8CFF}
+.pz-list{display:flex;flex-direction:column;gap:9px;margin:0;padding:0;list-style:none}
+.pz-item{position:relative;padding:11px 12px 11px 16px;border-radius:14px;background:var(--glass-2);border:1px solid transparent}
+.pz-item::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:3px;background:var(--ic,var(--muted))}
+.pz-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-bottom:5px}
+.pz-top .pdot{width:8px;height:8px;border-radius:50%;background:var(--pc2,var(--muted));box-shadow:0 0 8px var(--pc2,transparent)}
+.pz-st{font-weight:700;padding:2px 8px;border-radius:999px;font-size:11px}
+.pz-st.s-pendiente{color:var(--orange);background:color-mix(in srgb,var(--orange) 14%,transparent)}
+.pz-st.s-en_curso{color:#7C8CFF;background:color-mix(in srgb,#7C8CFF 16%,transparent)}
+.pz-st.s-hecho{color:var(--green);background:color-mix(in srgb,var(--green) 14%,transparent)}
+.pz-st.s-bloqueado{color:var(--red);background:var(--red-bg)}
+.pz-text{font-size:14px;line-height:1.4}
+.pz-sub{font-size:12.5px;color:var(--muted);margin-top:5px;line-height:1.4}
+.pz-arrow{opacity:.6}
+.pz-empty{color:var(--faint);font-size:13.5px;padding:6px 2px}
+.pz-more{margin-top:10px;font-size:12.5px}
+@media (max-width:640px){.puente{grid-template-columns:1fr;gap:14px}}
 </style>
 </head>
 <body>
@@ -600,6 +620,64 @@ function animateRings(root){
   requestAnimationFrame(()=>requestAnimationFrame(()=>els.forEach(el=>{ el.style.strokeDashoffset=el.dataset.off+"px"; })));
 }
 
+
+/* ================= Puente entre sesiones ================= */
+const PKEY="miPanel.puente";
+let puente=(()=>{ try{ const r=JSON.parse(localStorage.getItem(PKEY)||"null"); if(r&&typeof r==="object") return r; }catch(e){} return {bandeja:[],bitacora:[]}; })();
+let puenteSig=JSON.stringify(puente);
+const ui2={pzAll:false, bzAll:false};
+async function pullPuente(){
+  const c=ghCfg(); if(!c) return;
+  try{
+    const u="https://api.github.com/repos/"+encodeURIComponent(c.owner)+"/"+encodeURIComponent(c.repo)+"/contents/puente.json?ref="+encodeURIComponent(c.branch)+"&_="+Date.now();
+    const r=await fetch(u,{headers:ghHeaders(c),cache:"no-store"});
+    if(!r.ok) return;
+    const j=await r.json(); const raw=b64dec(j.content); const sig=raw;
+    if(sig===puenteSig) return;
+    const d=JSON.parse(raw);
+    puente={bandeja:Array.isArray(d.bandeja)?d.bandeja:[], bitacora:Array.isArray(d.bitacora)?d.bitacora:[]};
+    puenteSig=sig;
+    try{ localStorage.setItem(PKEY, JSON.stringify(puente)); }catch(e){}
+    if(!typing()) renderHome();
+  }catch(e){}
+}
+function pzColor(name){
+  const n=String(name||"").toUpperCase(); if(!n) return "";
+  const p=data.projects.find(x=>x.name.toUpperCase().includes(n.split(" ")[0])||n.includes(x.name.toUpperCase().split(" ")[0]));
+  return p?p.color:"";
+}
+function pzWhen(iso){ const d=new Date(iso); if(isNaN(d)) return ""; return d.toLocaleDateString("es-ES",{day:"numeric",month:"short"})+" · "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"}); }
+const PZ_ST={pendiente:"Pendiente",en_curso:"En curso",hecho:"Hecho",bloqueado:"Bloqueado"};
+function puenteHTML(){
+  const order={en_curso:0,pendiente:1,bloqueado:2,hecho:3};
+  const bz=[...puente.bandeja].filter(x=>x&&x.titulo).sort((a,b)=>(order[a.estado]??4)-(order[b.estado]??4)||String(b.fecha||"").localeCompare(String(a.fecha||"")));
+  const open=bz.filter(x=>x.estado!=="hecho").length;
+  const bzShow=ui2.bzAll?bz:bz.slice(0,5);
+  const bt=[...puente.bitacora].filter(x=>x&&x.texto).sort((a,b)=>String(b.fecha||"").localeCompare(String(a.fecha||"")));
+  const btShow=ui2.pzAll?bt:bt.slice(0,5);
+  const st=e=>PZ_ST[e]?e:"pendiente";
+  return `<section class="puente">
+    <div class="glass panel">
+      <div class="panel-head"><h2>Para Claude Code</h2><span class="muted">${open} abierta${open===1?"":"s"}</span></div>
+      ${bz.length?`<ul class="pz-list">${bzShow.map(x=>`<li class="pz-item" style="--ic:${pzColor(x.proyecto)||"var(--muted)"}">
+        <div class="pz-top"><span class="pz-st s-${st(x.estado)}">${PZ_ST[st(x.estado)]}</span><span class="pdot" style="--pc2:${pzColor(x.proyecto)}"></span><span>${esc(x.proyecto||"General")}</span><span>· ${esc(pzWhen(x.fecha))}</span>${x.donde?`<span>· ${esc(x.donde)}</span>`:""}</div>
+        <div class="pz-text">${esc(x.titulo)}</div>
+        ${x.resultado?`<div class="pz-sub">${esc(x.resultado)}</div>`:""}
+      </li>`).join("")}</ul>${bz.length>5?`<button class="link pz-more" data-act="pz-bz">${ui2.bzAll?"Ver menos":"Ver todas ("+bz.length+")"}</button>`:""}`
+      :`<p class="pz-empty">Sin encargos. Cuando le pidas algo a Claude para Claude Code, aparecerá aquí.</p>`}
+    </div>
+    <div class="glass panel">
+      <div class="panel-head"><h2>Notas entre proyectos</h2><span class="muted">${bt.length}</span></div>
+      ${bt.length?`<ul class="pz-list">${btShow.map(x=>{ const af=(Array.isArray(x.afecta)?x.afecta:[x.afecta]).filter(Boolean); return `<li class="pz-item" style="--ic:${pzColor(af[0]||x.desde)||"var(--muted)"}">
+        <div class="pz-top"><span class="pdot" style="--pc2:${pzColor(x.desde)}"></span><span>${esc(x.desde||"General")}</span>${af.length?`<span class="pz-arrow">→</span><span>${esc(af.join(", "))}</span>`:""}<span>· ${esc(pzWhen(x.fecha))}</span></div>
+        <div class="pz-text">${esc(x.texto)}</div>
+        ${x.accion?`<div class="pz-sub">Hecho: ${esc(x.accion)}</div>`:""}
+      </li>`}).join("")}</ul>${bt.length>5?`<button class="link pz-more" data-act="pz-bt">${ui2.pzAll?"Ver menos":"Ver todas ("+bt.length+")"}</button>`:""}`
+      :`<p class="pz-empty">Aún no hay notas. Lo que decidas en un proyecto y afecte a otro quedará apuntado aquí.</p>`}
+    </div>
+  </section>`;
+}
+
 /* ================= Home ================= */
 const home=$("#home"), pv=$("#pv"), pvInner=$("#pvInner"), modalRoot=$("#modalRoot");
 
@@ -641,6 +719,7 @@ function renderHome(){
     ${live.map(card).join("")}
     <button class="pcard add-card ${ui.first?"enter":""}" style="animation-delay:${live.length*50}ms" data-act="new-project"><span class="plus">+</span><span>Nuevo proyecto</span></button>
   </section>
+  ${puenteHTML()}
   <footer class="foot">
     ${arch.length ? `<button class="link" data-act="archived">Proyectos archivados (${arch.length})</button>` : `<span>Sin proyectos archivados</span>`}
     <span>·</span><span>Guardado automático en este navegador</span>
@@ -1010,7 +1089,7 @@ async function pull(silent, force){
       const incoming=normalize(JSON.parse(b64dec(j.content)));
       incoming.theme=data.theme; sync.sha=j.sha; data=incoming; seed(); localSave(); applyTheme(); renderAll();
     }
-    sync.last=Date.now(); sync.err=""; setSync("ok");
+    sync.last=Date.now(); sync.err=""; setSync("ok"); pullPuente();
   }catch(e){ sync.err=String(e.message||e); setSync("err"); if(!silent) toast("⚠ No se pudo leer de GitHub: "+sync.err); }
   sync.busy=false;
 }
@@ -1210,6 +1289,8 @@ document.addEventListener("click", e=>{
     case "backup": backupModal(); break;
     case "sync": syncModal(); break;
     case "archived": archivedModal(); break;
+    case "pz-bz": ui2.bzAll=!ui2.bzAll; renderHome(); break;
+    case "pz-bt": ui2.pzAll=!ui2.pzAll; renderHome(); break;
     case "new-project": projectModal(null); break;
     case "open":
       if(!p) break;
