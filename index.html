@@ -577,12 +577,15 @@ function normProject(p){
 }
 function normalize(d){
   d=d||{};
-  return {
+  const out={
     version:2,
     theme:d.theme==="light"||d.theme==="dark"?d.theme:null,
     seeded:Array.isArray(d.seeded)?d.seeded.filter(x=>typeof x==="string"):[],
     projects:(Array.isArray(d.projects)?d.projects:[]).filter(p=>p && typeof p.name==="string" && p.name.trim()).map(normProject)
   };
+  /* Keep top-level fields written by Claude or other tools (e.g. buzonAplicados) instead of dropping them on save */
+  Object.keys(d).forEach(k=>{ if(!(k in out) && k!=="updatedAt" && k!=="updatedBy") out[k]=d[k]; });
+  return out;
 }
 function load(){
   try{ const raw=localStorage.getItem(KEY); if(raw) return normalize(JSON.parse(raw)); }catch(e){}
