@@ -400,14 +400,13 @@ select option{background:var(--bg2);color:var(--text)}
 .v-list li .v-k:first-child:not(:only-child){min-width:auto}
 .v-list li > .v-k{min-width:22px}
 .v-list li > .v-k + span{flex:1}
-.vida .glass.v-hoy{--pc:#00D4FF}.vida .glass.v-noche{--pc:#A78BFA}.vida .glass.v-semana{--pc:#34D399}.vida .glass.v-cerebro{--pc:#F59E0B}
+.vida .glass.v-noche{--pc:#A78BFA}.vida .glass.v-cerebro{--pc:#F59E0B}
 .v-tit{font-size:15px;line-height:1.5;margin:0 0 14px}
 .v-sub{font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px}
 .v-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
 .v-list li{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.4;padding:8px 11px;border-radius:12px;background:var(--glass-2)}
 .v-list .v-k{flex:0 0 auto;font-variant-numeric:tabular-nums;font-weight:600;color:var(--pc);min-width:22px;font-size:13px;padding-top:1px}
 .v-list .v-m{color:var(--muted);font-size:12.5px;display:block;margin-top:2px}
-.v-tag{flex:0 0 auto;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;background:color-mix(in srgb,var(--pc) 16%,transparent);color:var(--pc);margin-left:auto;align-self:center;white-space:nowrap}
 .v-ok li::before{content:"✓";color:var(--green);font-weight:700}
 .v-ko li::before{content:"•";color:var(--red);font-weight:700}
 .v-two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -417,7 +416,6 @@ select option{background:var(--bg2);color:var(--text)}
 .v-mood button{border:1px solid var(--line);background:var(--glass-2);border-radius:12px;padding:6px 10px;font-size:18px;line-height:1;transition:transform .15s,border-color .2s,background .2s}
 .v-mood button.on{border-color:var(--pc);background:color-mix(in srgb,var(--pc) 18%,transparent);transform:translateY(-1px)}
 .v-note{font-size:13.5px;color:var(--muted);line-height:1.5;margin:10px 0 0;padding:10px 12px;border-left:3px solid var(--pc);background:var(--glass-2);border-radius:0 12px 12px 0}
-.v-plan{display:grid;gap:6px;font-size:14px}.v-plan b{color:var(--pc);font-weight:600}
 .v-ask{display:flex;gap:8px;margin-top:14px}.v-ask .input{flex:1}
 .v-empty{color:var(--faint);font-size:13.5px;margin:4px 0}
 .v-cats{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
@@ -720,7 +718,7 @@ function puenteHTML(){
 
 /* ================= Panel de vida + segundo cerebro ================= */
 const VKEY="miPanel.vida", CKEY="miPanel.cerebro";
-const VIDA0={resumen:{},chequeos:[],noches:[],semanas:[]};
+const VIDA0={chequeos:[],noches:[]};
 let vida=(()=>{ try{ const r=JSON.parse(localStorage.getItem(VKEY)||"null"); if(r&&typeof r==="object") return Object.assign({},VIDA0,r); }catch(e){} return Object.assign({},VIDA0); })();
 let cerebro=(()=>{ try{ const r=JSON.parse(localStorage.getItem(CKEY)||"null"); if(r&&typeof r==="object") return r; }catch(e){} return {docs:[]}; })();
 let vidaSig="", cerebroSig="", vidaSha=null;
@@ -779,16 +777,7 @@ function cerebroUpcoming(days){
   return out.sort((a,b)=>a.fecha.localeCompare(b.fecha)).slice(0,6);
 }
 function vidaHTML(){
-  const t=todayStr(), R=vida.resumen||{};
-  const fresh=R.fecha===t;
-  const hoy=`<div class="glass panel v-hoy">
-    <div class="panel-head"><h2>Hoy</h2><span class="v-head-a">${R.generado?("Resumen de las "+new Date(R.generado).toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"})+(fresh?"":" · "+esc(fmtDate(R.fecha)))):"Resumen matinal"}</span></div>
-    <p class="v-tit">${esc(R.titular||"El resumen de cada mañana aparecerá aquí a las 7:45.")}</p>
-    ${R.prioridades&&R.prioridades.length?`<div class="v-sub">Prioridades</div><ul class="v-list">${R.prioridades.map((x,i)=>`<li><span class="v-k">${i+1}</span><span>${esc(x.texto||x)}</span>${x.proyecto?`<span class="v-tag" style="--pc:${pzColor(x.proyecto)||"var(--muted)"}">${esc(String(x.proyecto).split(" ")[0])}</span>`:""}</li>`).join("")}</ul>`:""}
-    ${R.agenda?`<div class="v-sub">Agenda</div>${R.agenda.length?`<ul class="v-list">${R.agenda.map(x=>`<li><span class="v-k">${esc(x.hora||"Todo el día")}</span><span>${esc(x.titulo)}${x.lugar?`<span class="v-m">${esc(x.lugar)}</span>`:""}</span></li>`).join("")}</ul>`:`<p class="v-empty">Sin eventos en el calendario.</p>`}`:""}
-    ${R.correo&&R.correo.length?`<div class="v-sub">Correo que importa</div><ul class="v-list">${R.correo.map(x=>`<li><span>${esc(x.asunto)}<span class="v-m">${esc(x.de||"")}${x.cuenta?" · "+esc(x.cuenta==="nuvirea"?"info@nuvirea":"Gmail"):""}</span></span>${x.accion&&x.accion!=="nada"?`<span class="v-tag">${esc(x.accion)}</span>`:""}</li>`).join("")}</ul>`:""}
-    ${R.avisos&&R.avisos.length?`<div class="v-sub">Avisos</div>${vItems(R.avisos)}`:""}
-  </div>`;
+  const t=todayStr();
   const myCheck=(vida.chequeos||[]).find(x=>x.fecha===t);
   const lastN=[...(vida.noches||[])].sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
   const noche=`<div class="glass panel v-noche">
@@ -806,14 +795,6 @@ function vidaHTML(){
       <div class="v-two"><div>${vItems(lastN.logros,"v-ok")}</div><div>${vItems(lastN.mejorar,"v-ko")}</div></div>
       ${lastN.comentario?`<p class="v-note">${esc(lastN.comentario)}</p>`:""}`:""}
   </div>`;
-  const W=[...(vida.semanas||[])].sort((a,b)=>String(b.hasta).localeCompare(String(a.hasta)))[0];
-  const semana=`<div class="glass panel v-semana">
-    <div class="panel-head"><h2>Revisión semanal</h2><span class="v-head-a">${W?esc(fmtDate(W.desde)+" – "+fmtDate(W.hasta)):"Cada domingo"}</span></div>
-    ${W?`${W.resumen&&W.resumen.length?`<div class="v-sub">Resumen</div>${vItems(W.resumen)}`:""}
-      ${W.mejoras&&W.mejoras.length?`<div class="v-sub">Mejoras principales</div><ul class="v-list">${W.mejoras.map((x,i)=>`<li><span class="v-k">${i+1}</span><span>${esc(x)}</span></li>`).join("")}</ul>`:""}
-      ${W.plan?`<div class="v-sub">Plan próxima semana</div><div class="v-plan">${W.plan.enfoque?`<div><b>Enfoque:</b> ${esc(W.plan.enfoque)}</div>`:""}${W.plan.objetivo?`<div><b>Objetivo:</b> ${esc(W.plan.objetivo)}</div>`:""}${W.plan.habito?`<div><b>Hábito:</b> ${esc(W.plan.habito)}</div>`:""}</div>`:""}`
-    :`<p class="v-empty">El domingo por la noche Claude junta tus chequeos y lo que has hecho en la semana y te deja aquí qué mejorar y el plan de la siguiente.</p>`}
-  </div>`;
   const up=cerebroUpcoming(45), cats={};
   (cerebro.docs||[]).forEach(d=>{ cats[d.categoria||"Otros"]=(cats[d.categoria||"Otros"]||0)+1; });
   const folder=cerebro.carpeta&&cerebro.carpeta.url;
@@ -824,7 +805,7 @@ function vidaHTML(){
     <div class="v-cats">${Object.entries(cats).map(([k,n])=>`<span>${esc(k)} <b>${n}</b></span>`).join("")||'<span>Sin documentos aún</span>'}</div>
     <form class="v-ask" id="vAsk" autocomplete="off"><input id="vQ" class="input" placeholder="Pregúntale: ¿cuándo vence mi seguro?" aria-label="Pregunta al segundo cerebro"><button class="btn primary" type="submit" style="--pc:#F59E0B">Preguntar</button></form>
   </div>`;
-  return `<section class="vida">${hoy}${noche}${semana}${cer}</section>`;
+  return `<section class="vida">${noche}${cer}</section>`;
 }
 
 /* ================= Home ================= */
