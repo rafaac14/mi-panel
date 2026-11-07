@@ -548,6 +548,7 @@ function normProject(p){
   const tags=(Array.isArray(p.tags)?p.tags:[]).filter(t=>typeof t==="string").map(t=>t.trim()).filter(Boolean);
   return {
     id:String(p.id||uid()), name:String(p.name).trim(), desc:typeof p.desc==="string"?p.desc:"",
+    link:(typeof p.link==="string" && /^https:\/\//.test(p.link))?p.link:"", linkLabel:str(p.linkLabel),
     status:STATUSES[p.status]?p.status:"no", archived:!!p.archived, createdAt:+p.createdAt||Date.now(),
     color:isHex(p.color)?p.color:"", color2:isHex(p.color2)?p.color2:"", base:isHex(p.base)?p.base:"",
     icon:(typeof p.icon==="string" && p.icon.trim()) ? Array.from(p.icon.trim()).slice(0,4).join("") : "📁",
@@ -868,6 +869,7 @@ function renderProject(){
       ${p.archived?`<span class="arch-tag">Archivado</span>`:""}
       <h1>${esc(p.name)}</h1>
       ${p.desc?`<p class="hero-desc">${esc(p.desc)}</p>`:""}
+      ${p.link?`<p style="margin:12px 0 0"><a class="btn primary" href="${esc(p.link)}" target="_blank" rel="noopener">${esc(p.linkLabel||"Abrir enlace")} ↗</a></p>`:""}
       <div class="hero-meta">
         <label class="status-wrap st-${p.status}"><span class="sdot"></span>
           <select data-act="set-status" data-pid="${p.id}" aria-label="Estado del proyecto">${Object.entries(STATUSES).map(([k,v])=>`<option value="${k}" ${k===p.status?"selected":""}>${v}</option>`).join("")}</select></label>
